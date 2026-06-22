@@ -1,7 +1,7 @@
 # EventMonitor
 
 イベント参加の告知を見逃さないための自動監視・通知システム。  
-Twitter/Xアカウントのツイートを定期的に取得し、イベント関連のポストをAIで検出してDiscordに通知します。
+Twitter/Xを中心に、Pixiv、Kemono、FANBOXなど複数サービスの投稿・メディアを定期取得し、イベント関連のポストをAIで検出してDiscordに通知します。
 
 ## 使い方
 
@@ -60,13 +60,36 @@ python main.py --daemon
 
 ## 主な機能
 
-- **自動ツイート収集**: 指定アカウントのツイートを定期的に取得
+- **マルチサービス収集**: Twitter/X、Pixiv、Kemono、FANBOXなどの投稿とメディアを定期的に取得
 - **AI判定**: イベント関連ツイートを自動検出（Gemini/GPT-4）
 - **Discord通知**: 検出したイベント情報を即座に通知
 - **データベース管理**: SQLiteで収集データを管理
 - **メディア保存**: 画像・動画を自動ダウンロード
 - **HuggingFaceバックアップ**: メディアファイルの自動バックアップ
 - **Hydrus連携**: イベント画像の自動インポート
+
+## 対応サービス
+
+`monitored_accounts.csv` の `platform` で監視対象サービスを指定できます。空欄または `twitter` は Twitter/X として扱います。
+
+| platform | 対応サービス | 主な用途 |
+| --- | --- | --- |
+| `twitter` | Twitter/X | ツイート、画像、動画、イベント告知検出 |
+| `pixiv` | Pixiv | 作品画像、ログ専用保存、Hydrus連携 |
+| `kemono` | Kemono | 投稿メディア、FANBOX/Patreon系ログ保存 |
+| `fanbox` | FANBOX | クリエイター投稿、画像保存 |
+| `fantia` | Fantia | 投稿メディア保存 |
+| `nijie` | Nijie | 作品画像保存 |
+| `skeb` | Skeb | 納品作品保存 |
+| `misskey` | Misskey系インスタンス | 投稿メディア保存 |
+| `gelbooru` | Gelbooru | タグ検索ベースの画像収集 |
+| `tinami` | TINAMI | 作品画像保存 |
+| `poipiku` | Poipiku | 投稿画像保存 |
+| `bluesky` | Bluesky | 投稿メディア保存 |
+| `privatter` | Privatter | 限定投稿画像保存 |
+| `bilibili` | bilibili動態/opus | 投稿画像保存 |
+
+DiscordからのURL取り込み、ログ専用アカウント、Hydrusタグ付け、HuggingFaceバックアップは対応サービスごとに利用できる範囲で連携します。
 
 ## Hydrus連携で付与されるタグ
 

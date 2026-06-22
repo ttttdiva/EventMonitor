@@ -1,0 +1,71 @@
+{
+  "manifest_version": 3,
+  "name": "EventMonitor Hydrus Importer",
+  "version": "0.1.9",
+  "description": "Import images from Pixiv, Twitter/X, Bluesky, Danbooru, and Gelbooru to Hydrus Network with EventMonitor-compatible tags",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:45869/*",
+    "http://localhost:45869/*",
+    "https://www.pixiv.net/*",
+    "https://i.pximg.net/*",
+    "https://pbs.twimg.com/*",
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://bsky.app/*",
+    "https://cdn.bsky.app/*",
+    "https://public.api.bsky.app/*",
+    "https://danbooru.donmai.us/*",
+    "https://cdn.donmai.us/*",
+    "https://gelbooru.com/*",
+    "https://*.gelbooru.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.pixiv.net/artworks/*",
+        "https://www.pixiv.net/*/artworks/*"
+      ],
+      "js": ["content/pixiv.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": ["content/twitter.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://bsky.app/*"
+      ],
+      "js": ["content/bluesky.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://danbooru.donmai.us/posts/*"
+      ],
+      "js": ["content/danbooru.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://gelbooru.com/*"
+      ],
+      "js": ["content/gelbooru.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html"
+  }
+}

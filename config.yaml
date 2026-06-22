@@ -1,0 +1,441 @@
+# EventMonitor設定ファイル
+
+# 監視対象アカウント（monitored_accounts.csvから読み込み）
+
+
+# LLM判定ルーティング。利用可能なモデルとeffortは docs/llm_routing.md を参照。
+llm_providers:
+  codex_cli:
+    command: "codex"
+    args:
+      - "exec"
+      - "--skip-git-repo-check"
+      - "--ephemeral"
+      - "--ignore-rules"
+      - "--sandbox"
+      - "read-only"
+    env_vars: {}
+    timeout: 180
+  gemini_cli:
+    command: "gemini"
+    args:
+      - "-o"
+      - "json"
+    env_vars: {}
+    timeout: 180
+  gemini_api:
+    env_vars: {}
+    timeout: 180
+  openai_api:
+    env_vars: {}
+    timeout: 180
+
+llm_routes:
+  - name: "codex-spark-low"
+    provider: "codex_cli"
+    model: "gpt-5.3-codex-spark"
+    effort: "low"
+  - name: "gemini-cli-3-flash"
+    provider: "gemini_cli"
+    model: "gemini-3-flash-preview"
+  - name: "codex-5.4-mini"
+    provider: "codex_cli"
+    model: "gpt-5.4-mini"
+    effort: "low"
+  - name: "gemini-api-3-flash"
+    provider: "gemini_api"
+    model: "gemini-3-flash-preview"
+# データベース設定
+# SQLiteを使用
+database:
+  type: "sqlite"
+  path: "data/eventmonitor.db"
+
+# Discord通知設定
+discord:
+  # 通知内容の設定
+  notification:
+    mention_role: null  # @everyone, @here, または特定のロールID
+    embed_color: 0x1da1f2  # Twitter青
+
+# Discordチャネルからの監視アカウント追加
+discord_ingest:
+  enabled: true
+  guild_id: "710364576436191289"
+  channel_id: "1452383265058193438"
+  max_messages: null
+
+csv_git_sync:
+  enabled: true
+  paths:
+    - "monitored_accounts.csv"
+    - "deleted_accounts.csv"
+  remote: "origin"
+  command_timeout_seconds: 120
+  lock_stale_seconds: 1800
+
+# ステータス通知設定（ダッシュボード・AoiTalk連携）
+status_notification:
+  # Discord ダッシュボード通知
+  discord:
+    enabled: true
+    # 最小更新間隔（秒）- レート制限対策
+    min_update_interval_seconds: 60
+  # AoiTalk ステータスPush
+  aoitalk:
+    enabled: false
+
+# ツイート取得設定
+tweet_settings:
+  # 過去何日分のツイートを取得するか
+  days_lookback: 36500  # 1=1日
+  # リトライ設定
+  max_retries: 3
+  retry_delay: 60  # 秒
+  # 起動時に未通知イベントを再送する最大経過日数
+  # 0以下で無制限。古い backlog の一括再送を避けたい場合は正の値にする
+  resume_unnotified_max_age_days: 7
+  # イベント判定キューでLLM再判定する最大経過日数
+  # これより古い未判定ツイートは過去backlogとして判定済みにし、LLMへ投げない
+  pending_event_max_age_days: 7
+  
+  # gallery-dl設定（メディア付きツイートの取得と画像・動画ダウンロード）
+  gallery_dl:
+    # gallery-dlを使用するか（優先実行される）
+    enabled: true
+    # 強制的に全ツイートを取得するか（新着チェックをスキップ）
+    force_full_fetch: false
+    # 一度にダウンロードする最大ツイート数（大量の場合は分割）
+    max_batch_size: 100
+  
+  # twscrape設定（テキストのみツイート取得）
+  twscrape:
+    # twscrapeを使用するか（gallery-dlで取得できなかったツイートを補完）
+    enabled: false
+    # 強制的に全ツイートを取得するか（効率化を無視）
+    force_full_fetch: false
+  
+  # 鍵アカウント用の指定Cookie設定
+  private_account_cookies:
+    # gallery-dl用の指定Cookieファイル（鍵アカウントでリトライ時に使用）
+    gallery_dl_cookie: "cookies/x.com_cookies_14.txt"
+    # twscrape用の指定アカウント（.envのTWITTER_ACCOUNT_番号）
+    twscrape_account: 15
+
+# イベント判定設定
+event_detection:
+  # イベント検出機能を有効にするか（false: クローラーとしてのみ動作）
+  enabled: true
+  # イベント関連キーワード
+  keywords:
+    - "参加"
+    - "出展"
+    - "ブース"
+    - "スペース"
+    - "サークル"
+    - "新刊"
+    - "頒布"
+    - "委託"
+    - "イベント"
+    - "コミケ"
+    - "C102"
+    - "C103"
+    - "コミティア"
+    - "M3"
+    - "例大祭"
+    - "オンリー"
+    - "声音"
+    - "申し込み"
+    - "申込"
+    - "出ます"
+    - "通販"
+    - "BOOTH"
+    - "メロンブックス"
+    - "とらのあな"
+
+  # 除外キーワード（これらが含まれる場合は通知しない）
+  exclude_keywords:
+    - "完売"
+    - "終了"
+  # OpenAI用のLLM温度（GPT-5系モデルは自動的にデフォルト値=1が使われます）
+  openai_temperature: 0.3
+
+# 画像管理設定
+image_settings:
+  # 古い画像の自動削除を有効にするか
+  cleanup_enabled: false
+  # 画像保持期間（日数）
+  retention_days: 30
+
+# Hugging Faceバックアップ設定
+huggingface_backup:
+  # バックアップを有効にするか
+  enabled: false
+  # リポジトリ名（config.yamlで設定）
+  repo_name: "disguisequence/EventMonitor_1"
+  # 画像も含めるか
+  include_images: true
+  # アップロードモード ('immediate': 即時アップロード, 'batch': 全ダウンロード後一括アップロード)
+  upload_mode: 'immediate'
+  # rclone暗号化設定
+  rclone_encryption:
+    # 暗号化を有効にするか
+    enabled: false
+    # rclone設定ファイルのパス（省略時はデフォルトのrclone.conf）
+    config_path: "rclone.conf"
+  # レート制限時の待機をスキップするか（falseで適切に待機）
+  skip_rate_limit_wait: false
+
+
+# Hydrus Client連携設定
+hydrus:
+  # 連携を有効にするか
+  enabled: true
+  # Hydrus Client APIのURL
+  api_url: "http://127.0.0.1:45869"
+  # インポート設定
+  import_settings:
+    # イベント関連ツイートのみインポートするか
+    event_tweets_only: false
+    # 既存ファイルのスキップ（SHA256ハッシュで判定）
+    skip_existing: true
+  # プラットフォーム別タグサービス振り分け
+  # 未設定のプラットフォームは "my tags" (local tags) にフォールバック
+  # Gelbooruのみdanbooruタグ体系が異なるため専用サービスに分離
+  tag_services:
+    gelbooru: "danbooru tags"
+  # 視覚的重複検知（perceptual hash）設定
+  dedup:
+    # 重複検知を有効にするか
+    enabled: false
+    # ハミング距離（0=リサイズ・JPEG品質違いのみ, 4=汎用的な重複検出）
+    max_hamming_distance: 4
+    # 検索タイプ（0=片方一致, 1=両方同一条件, 2=両方異なる条件）
+    potentials_search_type: 0
+    # ピクセル重複（0=同一のみ, 1=含む, 2=除外）
+    pixel_duplicates: 1
+    # potential discovery安定待ちのポーリング間隔（秒）
+    polling_interval: 10
+    # 最大待機時間（秒）
+    polling_max_wait: 300
+    # dry_run: trueの場合、削除せずにログのみ出力
+    dry_run: false
+  # タグ設定
+  tag_settings:
+    # 基本タグ（必ず付与）
+    base_tags:
+      - "source:twitter"
+      - "imported_by:eventmonitor"
+    # ツイートIDタグを追加するか
+    include_tweet_id_tag: true
+    # ツイートIDタグの形式（{tweet_id}に数字のみのIDが入る）
+    tweet_id_tag_format: "tweet_id:{tweet_id}"
+    # クリエイター名のタグ形式
+    creator_tag_format: "creator:{name}"
+    # イベント名のタグ形式
+    event_tag_format: "event:{name}"
+    # 日付タグを追加するか（デフォルト: false）
+    include_date_tag: false
+    # 日付タグの形式
+    # date_tag_format: "date:{date}"
+    # ツイートURLをタグとして追加するか（デフォルト: false）
+    include_tweet_url: false
+    # タイトルタグ（ツイート本文）を追加するか（デフォルト: true）
+    include_title_tag: true
+    # 検出されたキーワードをタグとして追加するか
+    # include_detected_keywords: true
+
+# Pixiv設定
+pixiv:
+  enabled: true
+  force_full_fetch: false
+  gallery_dl:
+    # 一度にダウンロードする最大作品数
+    max_batch_size: 50
+
+# Kemono設定
+kemono:
+  enabled: true
+  force_full_fetch: false
+  # gallery-dl が Kemono CDN の一部ノードでタイムアウトした場合の代替ホスト
+  cdn_fallback_hosts:
+    - n2.kemono.cr
+    - n3.kemono.cr
+    - n4.kemono.cr
+    - n1.kemono.cr
+  # 原寸CDNが全滅している場合に最後に試すプレビュー/サムネイル配信
+  preview_fallback_hosts:
+    - img.kemono.cr
+    - kemono.cr
+  preview_fallback_connect_timeout: 3
+  preview_fallback_read_timeout: 15
+  cdn_fallback_connect_timeout: 8
+  cdn_fallback_read_timeout: 60
+  cdn_fallback_cooldown_seconds: 600
+  gallery_dl:
+    # 一度にダウンロードする最大作品数
+    max_batch_size: 50
+
+# TINAMI設定
+tinami:
+  enabled: true
+  force_full_fetch: false
+  # 一度にダウンロードする最大作品数
+  max_batch_size: 50
+
+# Poipiku設定
+poipiku:
+  enabled: true
+  force_full_fetch: false
+  # 一度にダウンロードする最大作品数
+  max_batch_size: 50
+
+# Fantia設定
+fantia:
+  enabled: true
+  force_full_fetch: false
+  # 一度にダウンロードする最大作品数
+  max_batch_size: 50
+
+# Nijie設定
+nijie:
+  enabled: true
+  force_full_fetch: false
+  # 一度にダウンロードする最大作品数
+  max_batch_size: 50
+
+# Skeb設定
+skeb:
+  enabled: true
+  force_full_fetch: false
+  # 一度にダウンロードする最大作品数
+  max_batch_size: 50
+
+# bilibili設定（動態/opus監視）
+# 認証不要。Cookie(cookies/bilibili.com_cookies.txt)があればリスクコントロール緩和に使用
+# NSFWフラグが存在しないため sensitive は常にFalse
+bilibili:
+  enabled: true
+  force_full_fetch: false
+  # 一度にダウンロードする最大opus数
+  max_batch_size: 50
+  # feed/space API の新着チェック最大ページ数（1ページ20件）
+  feed_max_pages: 20
+
+# Misskey設定
+misskey:
+  enabled: true
+  force_full_fetch: false
+  default_instance: misskey.io
+  known_hosts:
+    - misskey.io
+    - voskey.icalo.net
+  # 一度にダウンロードする最大ノート数
+  max_batch_size: 50
+
+# FANBOX設定
+fanbox:
+  enabled: true
+  force_full_fetch: false
+  # 一度にダウンロードする最大作品数
+  max_batch_size: 50
+
+# Bluesky設定
+bluesky:
+  enabled: true
+  force_full_fetch: false
+  # 一度にダウンロードする最大投稿数
+  max_batch_size: 50
+
+# Privatter設定（Cookie認証: cookies/privatter.net_cookies.txt）
+# R-18判定不可のため全投稿をsensitive=Trueとして扱う
+privatter:
+  enabled: true
+  force_full_fetch: false
+  max_batch_size: 50
+
+# Gelbooru設定
+gelbooru:
+  enabled: true
+  force_full_fetch: false
+  # API認証（任意。設定するとレート制限が緩和される）
+  api_key: ""
+  user_id: ""
+  # タグ検索1回あたりの最大取得件数（初回は大量ヒット防止のため制限推奨）
+  max_fetch_limit: 200
+  # 一度にダウンロードする最大件数
+  max_batch_size: 50
+
+# アカウント到達性監視設定
+account_monitoring:
+  # フラグからN日経過で deleted_accounts.csv へ自動アーカイブ
+  expiry_days: 30
+
+# システム設定
+system:
+  # ログレベル (DEBUG, INFO, WARNING, ERROR)
+  log_level: "DEBUG"
+  # データ保存ディレクトリ
+  data_dir: "data"
+  # 実行間隔（分）
+  check_interval: 60
+  # 並列処理設定
+  parallel_processing:
+    # 並列処理を有効にするか
+    enabled: false
+    # 同時に処理するアカウント数
+    max_concurrent_accounts: 10
+  # クロール優先順位の動的調整
+  priority_sorting:
+    # 直近の投稿頻度に基づいてプラットフォーム内のクロール順序をソート
+    enabled: true
+    # 投稿頻度の集計期間（日数）
+    window_days: 7
+
+# メディア保存設定
+media_storage:
+  # 画像ファイルの保存パス
+  # デフォルト: "images" (プロジェクトルート相対パス)
+  # 別ドライブ例: "/mnt/e/EventMonitor/images"
+  # images_path: "images"
+  images_path: "F:/48_EventMonitor_log/images"
+
+  # 動画ファイルの保存パス
+  # デフォルト: "videos" (プロジェクトルート相対パス)
+  # 別ドライブ例: "/mnt/e/EventMonitor/videos"
+  # videos_path: "videos"
+  videos_path: "F:/48_EventMonitor_log/videos"
+
+# ログ専用アカウント設定
+# 注意: enabled=falseでもlogアカウントの処理は継続される（ツイート取得・DB保存・メディアDL）
+# この設定はHuggingFaceアップロード機能のみを制御する
+log_only_accounts:
+  # HuggingFaceアップロード機能を有効にするか（logアカウント処理自体の制御ではない）
+  enabled: false
+  # アップロード後に画像を即削除するか
+  delete_after_upload: false
+  # 一度に処理するツイート数
+  batch_size: 50
+  # アップロードモード ('immediate': 即時アップロード, 'batch': 全ダウンロード後一括アップロード)
+  upload_mode: 'immediate'
+  # バッチモード用設定
+  batch_mode:
+    # 暗号化を有効にするか（logアカウントのみ）
+    encrypt_before_upload: false
+    # アップロード後にフォルダを削除するか
+    delete_after_batch_upload: false
+
+# Discord Crawler設定（サーバーアーカイブ）
+discord_crawler:
+  enabled: false
+  # DiscordChatExporter CLIのパス
+  cli_path: "tools/DiscordChatExporter.Cli.win-x64/DiscordChatExporter.Cli.exe"
+  # エクスポート先ディレクトリ
+  exports_dir: "F:/Crawler/Discord"
+  # 出力フォーマット (HtmlDark, HtmlLight, PlainText, Json, Csv)
+  output_format: "HtmlDark"
+  # メディアもダウンロードするか
+  download_media: true
+  # スレッド取得設定 (None / Active / All)
+  # フォーラムチャンネルのスレッドもエクスポートする場合は Active または All を指定
+  include_threads: "All"
